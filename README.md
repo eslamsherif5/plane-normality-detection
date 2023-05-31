@@ -39,6 +39,8 @@ The code is organized into the following sections:
 
 ***5 & 6 is where all the magic happens***
 
+![dia](diagrams/diagram.svg)
+
 ## Compilation and Execution
 
 ### Dependencies
