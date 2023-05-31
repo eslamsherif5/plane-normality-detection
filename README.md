@@ -4,6 +4,8 @@ This code performs normality detection on point cloud data of a planar surface u
 
 ## Usage
 
+The development environment used is a docker container based on this image [eslaaam3/aric:0.1](https://hub.docker.com/r/eslaaam3/aric/tags). More on this in the `docker` directory in this repo.
+
 The code can be used in two different modes (`DIR` preprocessor):
 
 1. Single File Mode: Pass a single .pcd file to the executable. If `DIR` preprocessor is ***commented***
