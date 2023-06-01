@@ -1,4 +1,4 @@
-# Normality Detection Code Documentation
+# Plane Normality Detection
 
 This code performs normality detection on point cloud data of a planar surface using some filtering, clustering, and plane fitting algorithms, and it estimates the orientation of the end effector relative to the surface.
 
