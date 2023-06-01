@@ -124,6 +124,7 @@ pcl::visualization::PCLVisualizer::Ptr NormalityDetection::createVisualizer(std:
 
 void NormalityDetection::passThroughFilterZ(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOut, bool verbose)
 {
+	unsigned int size = cloudIn->size();
 	pcl::PassThrough<pcl::PointXYZ>::Ptr passThroughZ(new pcl::PassThrough<pcl::PointXYZ>); // filtering object
 	passThroughZ->setInputCloud(cloudIn);
 	// points having values outside this interval for FieldName will be discarded
@@ -143,40 +144,56 @@ void NormalityDetection::passThroughFilterZ(pcl::PointCloud<pcl::PointXYZ>::Ptr 
 
 	if (verbose)
 	{
-		std::cout << "[PassThroughFilterZ] Removed " << (float)(cloudIn->size() - cloudOut->size()) / (float)cloudIn->size() * 100 << "% of data points." << std::endl;
-		std::cout << "Output cloud size is " << cloudOut->width << "x" << cloudOut->height << std::endl;
+		std::cout << "[PassThroughFilterZ] Removed " << (float)(size - cloudOut->size()) / (float)size * 100 << "% of data points."
+				  << "Output cloud size is " << cloudOut->width << "x" << cloudOut->height << std::endl;
 	}
 }
 
-void NormalityDetection::passThroughFilterX(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOut, bool verbose)
+void NormalityDetection::passThroughFilterX(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, bool verbose)
 {
+	unsigned int size = cloudIn->size();
 	pcl::PassThrough<pcl::PointXYZ>::Ptr passThroughZ(new pcl::PassThrough<pcl::PointXYZ>); // filtering object
 	passThroughZ->setInputCloud(cloudIn);
 	passThroughZ->setFilterFieldName("x");
 	// points having values outside this interval for FieldName will be discarded
 	passThroughZ->setFilterLimits(-0.5, 0.5);
-	passThroughZ->filter(*cloudOut);
+	passThroughZ->filter(*cloudIn);
 	// this->_passThroughZ->setNegative(true)
 	if (verbose)
 	{
-		std::cout << "[PassThroughFilterX] Removed " << (float)(cloudIn->size() - cloudOut->size()) / (float)cloudIn->size() * 100 << "% of data points." << std::endl;
-		std::cout << "Output cloud size is " << cloudOut->width << "x" << cloudOut->height << std::endl;
+		std::cout << "[PassThroughFilterX] Removed " << (float)(size - cloudIn->size()) / (float)size * 100 << "% of data points."
+				  << "Output cloud size is " << cloudIn->width << "x" << cloudIn->height << std::endl;
 	}
 }
 
-void NormalityDetection::passThroughFilterY(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOut, bool verbose)
+void NormalityDetection::passThroughFilterY(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, bool verbose)
 {
+	unsigned int size = cloudIn->size();
 	pcl::PassThrough<pcl::PointXYZ>::Ptr passThroughZ(new pcl::PassThrough<pcl::PointXYZ>); // filtering object
 	passThroughZ->setInputCloud(cloudIn);
 	passThroughZ->setFilterFieldName("y");
 	// points having values outside this interval for FieldName will be discarded
 	passThroughZ->setFilterLimits(-0.5, 0.5);
-	passThroughZ->filter(*cloudOut);
+	passThroughZ->filter(*cloudIn);
 	// this->_passThroughZ->setNegative(true)
 	if (verbose)
 	{
-		std::cout << "[PassThroughFilterY] Removed " << (float)(cloudIn->size() - cloudOut->size()) / (float)cloudIn->size() * 100 << "% of data points." << std::endl;
-		std::cout << "Output cloud size is " << cloudOut->width << "x" << cloudOut->height << std::endl;
+		std::cout << "[PassThroughFilterY] Removed " << (float)(size - cloudIn->size()) / (float)size * 100 << "% of data points."
+				  << "Output cloud size is " << cloudIn->width << "x" << cloudIn->height << std::endl;
+	}
+}
+
+void NormalityDetection::downsampleCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn, bool verbose)
+{
+	unsigned int size = cloudIn->size();
+	pcl::VoxelGrid<pcl::PointXYZ> sor;
+	sor.setInputCloud(cloudIn);
+	sor.setLeafSize(0.001, 0.001, 0.001);
+	sor.filter(*cloudIn);
+	if (verbose)
+	{
+		std::cout << "[PassThroughFilterY] Removed " << (float)(size - cloudIn->size()) / (float)size * 100 << "% of data points."
+				  << "Output cloud size is " << cloudIn->width << "x" << cloudIn->height << std::endl;
 	}
 }
 
