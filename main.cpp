@@ -2,7 +2,7 @@
 
 // Either use all files in a directory
 // or use only a single .pcd file (if commented)
-#define DIR
+// #define DIR
 
 #ifndef DIR
 // use pcl visualizer in case of dealing with a single .pcd file
@@ -71,9 +71,11 @@ int main(int argc, char **argv)
     // If yes, skip the preprocessing/filtration routine
     // and read the filtered .pcd files directly
     std::vector<std::string> list;
-    
-    if (nd.dirFiltered) list = nd.filteredList;
-    else list = nd.rawList;
+
+    if (nd.dirFiltered)
+        list = nd.filteredList;
+    else
+        list = nd.rawList;
 
     for (const auto &pcdFile : list)
     {
@@ -84,8 +86,6 @@ int main(int argc, char **argv)
 
         // Preprocessing
         pcl::PointCloud<pcl::PointXYZ>::Ptr preprocessedCloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr preprocessedCloud2(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr preprocessedCloud3(new pcl::PointCloud<pcl::PointXYZ>);
 
         // Filtering
         pcl::PointCloud<pcl::Normal>::Ptr cloudNormals(new pcl::PointCloud<pcl::Normal>);
@@ -110,25 +110,27 @@ int main(int argc, char **argv)
             nd.readPcd(pcdFile + ".pcd", rawCloud, true);
 
             // 2. [Preprocessing]/ specifying a region of interest
+            
             nd.passThroughFilterZ(rawCloud, preprocessedCloud, true);
-            nd.passThroughFilterX(preprocessedCloud, preprocessedCloud2, true);
-            nd.passThroughFilterY(preprocessedCloud2, preprocessedCloud3, true);
+            nd.passThroughFilterX(preprocessedCloud, true);
+            nd.passThroughFilterY(preprocessedCloud, true);
+            nd.downsampleCloud(preprocessedCloud, true);
 
             // 3. [Filtering]/ Currently using region growing clustering. We might need to implement/try other algos
             // TODO: implement a standalone function for the region growing algo containing step [3]
 
             // Apply Region Growing clustering algo
             // 3.1 Get cloud normals
-            nd.estimateNormalsOMP(preprocessedCloud3, cloudNormals, true);
+            nd.estimateNormalsOMP(preprocessedCloud, cloudNormals, true);
 
             // 3.2 Get all clusters out of region growing algo
-            nd.regionGrowingClustering(preprocessedCloud3, cloudNormals, colouredCloud, regionGrowingClusters, true);
+            nd.regionGrowingClustering(preprocessedCloud, cloudNormals, colouredCloud, regionGrowingClusters, true);
 
             // 3.3 Get largest cluster
             // hypothetically, the cluster that's most likely representing the plane
             // after removing most of the outliers and noise
             idx = nd.getLargestClusterIndex(regionGrowingClusters, true);
-            nd.pointCloudFromIndices(preprocessedCloud3, regionGrowingClusters[idx], largestClusterCloud, true);
+            nd.pointCloudFromIndices(preprocessedCloud, regionGrowingClusters[idx], largestClusterCloud, true);
 
 #ifdef DIR
             // IO]/ Write largest cluster to a new .pcd file to avoid filtering everytime
@@ -156,7 +158,6 @@ int main(int argc, char **argv)
                   << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
                   << std::endl;
 
-        // planeNormal.normalize();
         // // calculate the resultant angle (distance) between
         // float angle = std::acos(refNormal.dot(planeNormal) / (refNormal.norm() * planeNormal.norm())) * 180 / M_PI;
 
@@ -182,9 +183,9 @@ int main(int argc, char **argv)
     visRaw->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "raw_cloud");
 
     pcl::visualization::PCLVisualizer::Ptr visNormals = nd.createVisualizer("Normals");
-    visNormals->addPointCloud<pcl::PointXYZ>(preprocessedCloud3, "preprocessed_cloud");
+    visNormals->addPointCloud<pcl::PointXYZ>(preprocessedCloud, "preprocessed_cloud");
     visNormals->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "preprocessed_cloud");
-    visNormals->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(preprocessedCloud3, cloudNormals, 50, 0.0085, "normals_cloud");
+    visNormals->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(preprocessedCloud, cloudNormals, 50, 0.0085, "normals_cloud");
     visNormals->setPointCloudRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1.0, 0.0, 1.0, "normals_cloud");
     visNormals->setPointCloudRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_LINE_WIDTH, 2, "normals_cloud");
 
