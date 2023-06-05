@@ -75,7 +75,28 @@ public:
 
     pcl::PointCloud<pcl::PointXYZ> extractLargestCluster(std::pair<std::vector<pcl::PointIndices>, pcl::PointCloud<pcl::PointXYZRGB>> regionGrowing);
 
-    Eigen::Matrix3f calcRotationMatrix(Eigen::Vector3f planeNormal, bool verbose);
+    Eigen::Matrix3f getRotationMatrix(Eigen::Vector3f planeNormal, bool verbose);
+
+    Eigen::Vector3f getEulerAngles(Eigen::Matrix3f rotationMatrix, std::string order, bool verbose);
+
+    // Eigen::Matrixef getRotationMatrixFromAxisAngle(Eigen::Vector3f, Eigen::Vector3f)
+    // {
+    //     Eigen::Vector3f axis = refNormal.normalized().cross(planeNormal.normalized()).normalized();
+    //     float angle = std::acos(refNormal.normalized().dot(planeNormal.normalized()));
+    //     Eigen::AngleAxisf rotation(angle, axis);
+    //     Eigen::Matrix3f rotationMatrix = rotation.toRotationMatrix();
+    //     std::cout << std::endl
+    //     		  << std::setprecision(4)
+    //     		  << rotationMatrix << std::endl
+    //     		  << std::endl;
+
+    //     Eigen::Vector3f euler2 = rotationMatrix.eulerAngles(0, 1, 2) * 180.0 / M_PI;
+
+    //     std::cout << std::endl
+    //               << std::setprecision(6) << euler2[0] << ", " << euler2[1] << ", " << euler2[2] << std::endl
+    //               << std::endl;
+
+    // }
 
     short getIndex(std::vector<std::string> v, std::string element);
 

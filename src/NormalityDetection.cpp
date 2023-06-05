@@ -1,6 +1,6 @@
 #include "normality_detection/NormalityDetection.h"
 
-// #define NEW_DATA
+#define NEW_DATA
 
 // TODO revisit arguments names
 // TODO downsampling
@@ -64,7 +64,7 @@ void NormalityDetection::getFileList(std::string searchString, std::vector<std::
 		{
 			if (fileName.find(searchString) != std::string::npos)
 			{
-				fileName.erase(fileName.size() - 4);
+				// fileName.erase(fileName.size() - 4);
 				if (verbose)
 				{
 					std::cout << fileName << std::endl;
@@ -84,7 +84,7 @@ void NormalityDetection::filterPcd(std::vector<std::string> pcdFileList, pcl::Po
 {
 	for (const auto &pcdFile : pcdFileList)
 	{
-		// this->readPcd("", pcdFile + ".pcd", cloud, false);
+		// this->readPcd("", pcdFile, cloud, false);
 		// this->passThroughFilterZ(cloud, zFilteredCloud, passThroughZ);
 		// this->estimateNormalsOMP(zFilteredCloud, cloudNormals);
 	}
@@ -188,11 +188,11 @@ void NormalityDetection::downsampleCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr clo
 	unsigned int size = cloudIn->size();
 	pcl::VoxelGrid<pcl::PointXYZ> sor;
 	sor.setInputCloud(cloudIn);
-	sor.setLeafSize(0.001, 0.001, 0.001);
+	sor.setLeafSize(0.0005, 0.0005, 0.0005);
 	sor.filter(*cloudIn);
 	if (verbose)
 	{
-		std::cout << "[PassThroughFilterY] Removed " << (float)(size - cloudIn->size()) / (float)size * 100 << "% of data points."
+		std::cout << "[DownSampling] Removed " << (float)(size - cloudIn->size()) / (float)size * 100 << "% of data points."
 				  << "Output cloud size is " << cloudIn->width << "x" << cloudIn->height << std::endl;
 	}
 }
@@ -270,6 +270,8 @@ void NormalityDetection::estimateNormalsOMP(pcl::PointCloud<pcl::PointXYZ>::Ptr 
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
 
 	// this->configNormalsEstimationOMP(neOmp, tree, 1000);
+	// tree->setInputCloud(cloudIn);
+	neOmp->useSensorOriginAsViewPoint();
 	neOmp->setInputCloud(cloudIn);
 	neOmp->setSearchMethod(tree);
 	// Use all neighbors in a sphere of radius 3cm or 50 neighbour points
@@ -306,11 +308,16 @@ void NormalityDetection::regionGrowingClustering(pcl::PointCloud<pcl::PointXYZ>:
 
 // old data
 #ifndef NEW_DATA
+// 	reg.setMinClusterSize(20);
+// 	reg.setMaxClusterSize(1000000);
+// 	reg.setNumberOfNeighbours(30);
+// 	reg.setSmoothnessThreshold(1.0 / 180.0 * M_PI);
+// 	reg.setCurvatureThreshold(1.0);
 	reg.setMinClusterSize(20);
 	reg.setMaxClusterSize(1000000);
 	reg.setNumberOfNeighbours(30);
-	reg.setSmoothnessThreshold(1.0 / 180.0 * M_PI);
-	reg.setCurvatureThreshold(1.0);
+	reg.setSmoothnessThreshold(0.1 / 180.0 * M_PI);
+	reg.setCurvatureThreshold(0.05);
 #endif // NEW_DATA
 
 // new data
@@ -391,7 +398,7 @@ int NormalityDetection::getLargestClusterIndex(std::vector<pcl::PointIndices> cl
 	for (const auto &cluster : clusters)
 	{
 		sizes.push_back(cluster.indices.size());
-		// std::cout << cluster.indices.size() << std::endl;
+		std::cout << cluster.indices.size() << std::endl;
 	}
 	auto it = std::max_element(sizes.begin(), sizes.end());
 
@@ -412,7 +419,7 @@ int NormalityDetection::getLargestClusterIndex(std::vector<pcl::PointIndices> cl
 	return index;
 }
 
-Eigen::Matrix3f NormalityDetection::calcRotationMatrix(Eigen::Vector3f planeNormal, bool verbose)
+Eigen::Matrix3f NormalityDetection::getRotationMatrix(Eigen::Vector3f planeNormal, bool verbose)
 {
 	Eigen::Matrix3f rot_mat;
 	rot_mat.col(1) = planeNormal.cross(Eigen::Vector3f::UnitX()) / (planeNormal.cross(Eigen::Vector3f::UnitX())).norm();
@@ -426,6 +433,32 @@ Eigen::Matrix3f NormalityDetection::calcRotationMatrix(Eigen::Vector3f planeNorm
 				  << std::endl;
 	}
 	return rot_mat;
+}
+
+Eigen::Vector3f NormalityDetection::getEulerAngles(Eigen::Matrix3f rotationMatrix, std::string order, bool verbose)
+{
+		Eigen::Vector3f euler = rotationMatrix.eulerAngles(order[0], order[1], order[2]) * 180.0 / M_PI;
+
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+                  << std::endl;
+
+        if (std::abs(std::trunc(euler[2])) != 0)
+        {
+            euler[0] = 180 - euler[0];
+            euler[1] = 180 - euler[1];
+            euler[2] = 0;
+        }
+
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+                  << std::endl;
+
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << std::abs(std::trunc(euler[2])) << std::endl
+                  << std::endl;
+		
+		return Eigen::Vector3f(euler[0], euler[1], std::abs(std::trunc(euler[2])));
 }
 
 short NormalityDetection::getIndex(std::vector<std::string> v, std::string element)

@@ -2,7 +2,7 @@
 
 // Either use all files in a directory
 // or use only a single .pcd file (if commented)
-// #define DIR
+#define DIR
 
 #ifndef DIR
 // use pcl visualizer in case of dealing with a single .pcd file
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 #ifdef DIR
     // create .csv file
     int i = 1;
-    csvfile csv("../" + output_csv + ".csv"); // throws exceptions!
+    csvfile csv(output_csv + ".csv"); // throws exceptions!
     // Header
     csv << "PCD_file"
         << "x"
@@ -107,14 +107,15 @@ int main(int argc, char **argv)
         {
 #endif
             // 1. [IO]/ Reading .pcd file(s)
-            nd.readPcd(pcdFile + ".pcd", rawCloud, true);
+            nd.readPcd(pcdFile, rawCloud, true);
 
             // 2. [Preprocessing]/ specifying a region of interest
-            
+
             nd.passThroughFilterZ(rawCloud, preprocessedCloud, true);
             nd.passThroughFilterX(preprocessedCloud, true);
             nd.passThroughFilterY(preprocessedCloud, true);
-            nd.downsampleCloud(preprocessedCloud, true);
+
+            // nd.downsampleCloud(preprocessedCloud, true);
 
             // 3. [Filtering]/ Currently using region growing clustering. We might need to implement/try other algos
             // TODO: implement a standalone function for the region growing algo containing step [3]
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
         else
         {
             // read .pcd files that end with 'filtered' and store in largestClusterCloud
-            nd.readPcd(pcdFile + ".pcd", largestClusterCloud, true);
+            nd.readPcd(pcdFile, largestClusterCloud, true);
         }
 #endif // DIR
 
@@ -151,12 +152,83 @@ int main(int argc, char **argv)
         planeNormal[0] = planeCoeffs->values[0], planeNormal[1] = planeCoeffs->values[1], planeNormal[2] = planeCoeffs->values[2];
 
         // 5. [Pose estimation]/ get a rotation matrix(->then euler angles) based on the
-        Eigen::Matrix3f rot_mat = nd.calcRotationMatrix(planeNormal, true);
+        Eigen::Matrix3f rot_mat = nd.getRotationMatrix(planeNormal, true);
         Eigen::Vector3f euler = rot_mat.eulerAngles(0, 1, 2) * 180.0 / M_PI;
 
         std::cout << std::endl
                   << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
                   << std::endl;
+
+        if (std::abs(std::trunc(euler[2])) != 0) // if axes were rotated for some reason
+        {
+            euler[0] = euler[0] - 180;
+            euler[1] = 180 - euler[1];
+            euler[2] = 0;
+        }
+
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+                  << std::endl;        
+
+        for (size_t i = 0; i < euler.size(); i++)
+        {
+            // std::cout << std::endl << std::setprecision(6) 
+            //           << euler.size() 
+            //           << std::endl;
+            if (euler[i] >= 180)
+                euler[i] = euler[i] - 360;
+
+            else if (euler[i] <= -180)
+                euler[i] = euler[i] - 360;
+        }
+        
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+                  << std::endl;
+        
+        euler[2] = std::abs(std::trunc(euler[2]));
+
+        std::cout << std::endl
+                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << std::trunc(euler[2]) << std::endl
+                  << std::endl;
+
+        // // Create individual rotation matrices for each axis
+        // Eigen::AngleAxisf rollAngle(euler[0], Eigen::Vector3f::UnitX());
+        // Eigen::AngleAxisf pitchAngle(euler[1], Eigen::Vector3f::UnitY());
+        // Eigen::AngleAxisf yawAngle(euler[2], Eigen::Vector3f::UnitZ());
+
+        // // Combine the individual rotation matrices
+        // Eigen::Matrix3f rotationMatrix(rollAngle.toRotationMatrix() * pitchAngle.toRotationMatrix() * yawAngle.toRotationMatrix());
+
+        // // Eigen::Quaterniond quaternion = rollAngle * pitchAngle * yawAngle;
+
+        // // Convert the quaternion to a rotation matrix
+        // // Eigen::Matrix3d rotationMatrix = quaternion.matrix();
+
+        // std::cout << std::endl
+        //           << rotationMatrix << std::endl
+        //           << std::endl;
+
+        // Eigen::Vector3f axis = refNormal.normalized().cross(planeNormal.normalized()).normalized();
+        // float angle = std::acos(refNormal.normalized().dot(planeNormal.normalized()));
+        // Eigen::AngleAxisf rotation(angle, axis);
+        // Eigen::Matrix3f rotationMatrix = rotation.toRotationMatrix();
+        // std::cout << std::endl
+        // 		  << std::setprecision(4)
+        // 		  << rotationMatrix << std::endl
+        // 		  << std::endl;
+
+        // Eigen::Vector3f euler2 = rotationMatrix.eulerAngles(0, 1, 2) * 180.0 / M_PI;
+
+        // std::cout << std::endl
+        //           << std::setprecision(6) << euler2[0] << ", " << euler2[1] << ", " << euler2[2] << std::endl
+        //           << std::endl;
+
+        // // planeNormal.cross(refNormal) / (planeNormal.cross(refNormal)).norm();
+        // std::cout << std::endl
+        //           << std::setprecision(6)
+        //             << refNormal.normalized().dot(planeNormal.normalized())
+        //           << std::endl;
 
         // // calculate the resultant angle (distance) between
         // float angle = std::acos(refNormal.dot(planeNormal) / (refNormal.norm() * planeNormal.norm())) * 180 / M_PI;

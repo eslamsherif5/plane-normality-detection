@@ -14,8 +14,8 @@ include_directories(${PCL_INCLUDE_DIRS}
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-set(SOURCES main.cpp
-            NormalityDetection.cpp
+set(SOURCES src/main.cpp
+            src/NormalityDetection.cpp
             )
 
 add_executable(plane_normality ${SOURCES}) 
