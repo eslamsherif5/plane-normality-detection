@@ -1,6 +1,7 @@
 #ifndef _READ_PCD_H_
 #define _READ_PCD_H_
 
+#include <normality_detection/NormalityDetectionConfig.h>
 #include <bits/stdc++.h>
 // #include <iostream>
 // #include <thread>
@@ -77,7 +78,7 @@ public:
 
     Eigen::Matrix3f getRotationMatrix(Eigen::Vector3f planeNormal, bool verbose);
 
-    Eigen::Vector3f getEulerAngles(Eigen::Matrix3f rotationMatrix, std::string order, bool verbose);
+    Eigen::Vector3f getEulerAngles(Eigen::Matrix3f rotationMatrix, bool verbose);
 
     // Eigen::Matrixef getRotationMatrixFromAxisAngle(Eigen::Vector3f, Eigen::Vector3f)
     // {

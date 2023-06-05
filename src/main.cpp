@@ -1,46 +1,42 @@
 #include "normality_detection/NormalityDetection.h"
 
-// Either use all files in a directory
-// or use only a single .pcd file (if commented)
-#define DIR
-
-#ifndef DIR
+#ifndef PCD_DIR
 // use pcl visualizer in case of dealing with a single .pcd file
 #define VIS
-#endif // DIR
+#endif // PCD_DIR
 
 int main(int argc, char **argv)
 {
     // Init
     std::string dirIn, output_csv;
 
-// if DIR is not defined --> pass a .pcd file to the executable
-#ifndef DIR
+// if PCD_DIR is not defined --> pass a .pcd file to the executable
+#ifndef PCD_DIR
     if (!argv[1])
     {
         std::cerr << "No .pcd file passed in arguments" << std::endl;
         exit(1);
     }
-#endif // DIR
+#endif // PCD_DIR
 
-// if DIR is defined --> pass a directory of .pcd files to the executable
-#ifdef DIR
+// if PCD_DIR is defined --> pass a directory of .pcd files to the executable
+#ifdef PCD_DIR
     if (!argv[1])
     {
         std::cerr << "No directory passed in arguments" << std::endl;
         exit(1);
     }
-#endif // DIR
+#endif // PCD_DIR
 
 // check for output .csv file name only if we are passing a directory
-#ifdef DIR
+#ifdef PCD_DIR
     if (!argv[2])
     {
         std::cerr << "Output file [.csv] is not passed in the arguments list" << std::endl;
         exit(1);
     }
     output_csv = argv[2];
-#endif // DIR
+#endif // PCD_DIR
 
     dirIn = argv[1];
 
@@ -55,7 +51,7 @@ int main(int argc, char **argv)
     refPlaneCoeffs->values.push_back(refNormal[2]);
     refPlaneCoeffs->values.push_back(0);
 
-#ifdef DIR
+#ifdef PCD_DIR
     // create .csv file
     int i = 1;
     csvfile csv(output_csv + ".csv"); // throws exceptions!
@@ -66,7 +62,7 @@ int main(int argc, char **argv)
         << "z" << endrow;
 
     // read all files in the given directory
-    nd.readDir(dirIn, true);
+    nd.readDir(dirIn, VERBOSE);
     // Check if the directory was already filtered.
     // If yes, skip the preprocessing/filtration routine
     // and read the filtered .pcd files directly
@@ -79,7 +75,7 @@ int main(int argc, char **argv)
 
     for (const auto &pcdFile : list)
     {
-#endif // DIR
+#endif // PCD_DIR
 
         // IO
         pcl::PointCloud<pcl::PointXYZ>::Ptr rawCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -98,100 +94,63 @@ int main(int argc, char **argv)
         pcl::PointIndicesPtr planeInliers(new pcl::PointIndices);
         pcl::ModelCoefficientsPtr planeCoeffs(new pcl::ModelCoefficients);
 
-#ifndef DIR
+#ifndef PCD_DIR
         std::string pcdFile = dirIn + "";
-#endif // DIR
+#endif // PCD_DIR
 
-#ifdef DIR
+#ifdef PCD_DIR
         if (!(nd.dirFiltered))
         {
 #endif
             // 1. [IO]/ Reading .pcd file(s)
-            nd.readPcd(pcdFile, rawCloud, true);
+            nd.readPcd(pcdFile, rawCloud, VERBOSE);
 
             // 2. [Preprocessing]/ specifying a region of interest
 
-            nd.passThroughFilterZ(rawCloud, preprocessedCloud, true);
-            nd.passThroughFilterX(preprocessedCloud, true);
-            nd.passThroughFilterY(preprocessedCloud, true);
-
-            // nd.downsampleCloud(preprocessedCloud, true);
+            nd.passThroughFilterZ(rawCloud, preprocessedCloud, VERBOSE);
+            nd.passThroughFilterX(preprocessedCloud, VERBOSE);
+            nd.passThroughFilterY(preprocessedCloud, VERBOSE);
+#ifndef NEW_DATA
+            nd.downsampleCloud(preprocessedCloud, VERBOSE);
+#endif //NEW_DATA
 
             // 3. [Filtering]/ Currently using region growing clustering. We might need to implement/try other algos
             // TODO: implement a standalone function for the region growing algo containing step [3]
 
             // Apply Region Growing clustering algo
             // 3.1 Get cloud normals
-            nd.estimateNormalsOMP(preprocessedCloud, cloudNormals, true);
+            nd.estimateNormalsOMP(preprocessedCloud, cloudNormals, VERBOSE);
 
             // 3.2 Get all clusters out of region growing algo
-            nd.regionGrowingClustering(preprocessedCloud, cloudNormals, colouredCloud, regionGrowingClusters, true);
+            nd.regionGrowingClustering(preprocessedCloud, cloudNormals, colouredCloud, regionGrowingClusters, VERBOSE);
 
             // 3.3 Get largest cluster
             // hypothetically, the cluster that's most likely representing the plane
             // after removing most of the outliers and noise
-            idx = nd.getLargestClusterIndex(regionGrowingClusters, true);
-            nd.pointCloudFromIndices(preprocessedCloud, regionGrowingClusters[idx], largestClusterCloud, true);
+            idx = nd.getLargestClusterIndex(regionGrowingClusters, VERBOSE);
+            nd.pointCloudFromIndices(preprocessedCloud, regionGrowingClusters[idx], largestClusterCloud, VERBOSE);
 
-#ifdef DIR
+#ifdef PCD_DIR
             // IO]/ Write largest cluster to a new .pcd file to avoid filtering everytime
-            nd.writePcd("", pcdFile.substr(0, pcdFile.find("raw")) + "filtered.pcd", largestClusterCloud, true);
+            nd.writePcd("", pcdFile.substr(0, pcdFile.find("raw")) + "filtered.pcd", largestClusterCloud, VERBOSE);
         }
         else
         {
             // read .pcd files that end with 'filtered' and store in largestClusterCloud
-            nd.readPcd(pcdFile, largestClusterCloud, true);
+            nd.readPcd(pcdFile, largestClusterCloud, VERBOSE);
         }
-#endif // DIR
+#endif // PCD_DIR
 
         // 4. [Plane fitting]/ get a plane using RANSAC
         // fit a plane using the largest cluster we got in the previous step
-        nd.segPlane(planeInliers, planeCoeffs, largestClusterCloud, true);
+        nd.segPlane(planeInliers, planeCoeffs, largestClusterCloud, VERBOSE);
         // 4.1 get the normal to the fitted plane
         Eigen::Vector3f planeNormal;
         planeNormal[0] = planeCoeffs->values[0], planeNormal[1] = planeCoeffs->values[1], planeNormal[2] = planeCoeffs->values[2];
 
         // 5. [Pose estimation]/ get a rotation matrix(->then euler angles) based on the
-        Eigen::Matrix3f rot_mat = nd.getRotationMatrix(planeNormal, true);
-        Eigen::Vector3f euler = rot_mat.eulerAngles(0, 1, 2) * 180.0 / M_PI;
-
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
-                  << std::endl;
-
-        if (std::abs(std::trunc(euler[2])) != 0) // if axes were rotated for some reason
-        {
-            euler[0] = euler[0] - 180;
-            euler[1] = 180 - euler[1];
-            euler[2] = 0;
-        }
-
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
-                  << std::endl;        
-
-        for (size_t i = 0; i < euler.size(); i++)
-        {
-            // std::cout << std::endl << std::setprecision(6) 
-            //           << euler.size() 
-            //           << std::endl;
-            if (euler[i] >= 180)
-                euler[i] = euler[i] - 360;
-
-            else if (euler[i] <= -180)
-                euler[i] = euler[i] - 360;
-        }
-        
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
-                  << std::endl;
-        
-        euler[2] = std::abs(std::trunc(euler[2]));
-
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << std::trunc(euler[2]) << std::endl
-                  << std::endl;
-
+        Eigen::Matrix3f rot_mat = nd.getRotationMatrix(planeNormal, VERBOSE);
+        Eigen::Vector3f euler = nd.getEulerAngles(rot_mat, VERBOSE);
         // // Create individual rotation matrices for each axis
         // Eigen::AngleAxisf rollAngle(euler[0], Eigen::Vector3f::UnitX());
         // Eigen::AngleAxisf pitchAngle(euler[1], Eigen::Vector3f::UnitY());
@@ -236,18 +195,18 @@ int main(int argc, char **argv)
         // // std::cout << pcdFile.substr(0, pcdFile.find("raw")) + "filtered.pcd" << ": " << angle << std::endl;
 
         // std::cout << "angle = " << angle << std::endl;
-#ifdef DIR
+#ifdef PCD_DIR
         // 6. [IO]/[Postprocessing]
         csv << pcdFile.substr(0, pcdFile.find("raw")) + "filtered.pcd" << euler[0] << euler[1] << euler[2] << endrow;
 
         nd.printProgress(list, pcdFile);
 
-        // write a new file as a flag stating that the directory is filtered. you need to delete this file if you want to re-filter in dir mode
+        // write a new file as a flag stating that the directory is filtered. you need to delete this file if you want to re-filter in PCD_DIR mode
         std::ofstream outfile(dirIn + "filtered_directory");
         outfile << "" << std::endl;
         outfile.close();
     }
-#endif // DIR
+#endif // PCD_DIR
 
 #ifdef VIS
     pcl::visualization::PCLVisualizer::Ptr visRaw = nd.createVisualizer("Raw");

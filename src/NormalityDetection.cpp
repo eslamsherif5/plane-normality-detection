@@ -1,8 +1,5 @@
 #include "normality_detection/NormalityDetection.h"
 
-#define NEW_DATA
-
-// TODO revisit arguments names
 // TODO downsampling
 // TODO Statistical Outlier Removal
 // TODO use integral images to get the cloud normals -> apply pass through filter to raw cloud -> get original indices of the resulting/removed cloud points -> remove the correspoding normals from the normals cloud => WHY? Waaaaaaay faster to estimate the normals from an ordered pointcloud file [width x height]
@@ -39,25 +36,28 @@ void NormalityDetection::readDir(std::string dirIn, bool verbose)
 	}
 	if (verbose)
 	{
-		std::cout << "\n[IO-ReadDir] Found " << this->allPcdList.size() << " files in directory [" << dirIn << "]." << std::endl;
+		std::cout << "\n[IO-ReadDir] Found " << this->allPcdList.size() << " files in directory [" << dirIn << "]." << std::endl << std::endl;
 	}
 	if (this->dirFiltered)
 	{
-		if (verbose)
-		{
+		// if (verbose)
+		// {
 			std::cout << "\n[IO-ReadDir] Files in directory [" << dirIn << "] have been already filtered. Skipping filtering step." << std::endl;
-		}
-		this->getFileList("filtered", this->filteredList, dirIn, true);
+		// }
+		this->getFileList("filtered", this->filteredList, dirIn, verbose);
 	}
 	else
 	{
-		this->getFileList("raw", this->rawList, dirIn, true);
+		this->getFileList("raw", this->rawList, dirIn, verbose);
 	}
 }
 
 void NormalityDetection::getFileList(std::string searchString, std::vector<std::string> &fileListOut, std::string dirIn, bool verbose)
 {
-	std::cout << "\nReading files with [" << searchString << "] string in the directory [" << dirIn << "]." << std::endl;
+	if (verbose)
+	{
+		std::cout << "\nReading files with [" << searchString << "] string in the directory [" << dirIn << "]." << std::endl;
+	}
 	for (auto &fileName : this->allPcdList)
 	{
 		if (fileName.find(".pcd") != std::string::npos)
@@ -398,7 +398,7 @@ int NormalityDetection::getLargestClusterIndex(std::vector<pcl::PointIndices> cl
 	for (const auto &cluster : clusters)
 	{
 		sizes.push_back(cluster.indices.size());
-		std::cout << cluster.indices.size() << std::endl;
+		// std::cout << cluster.indices.size() << std::endl;
 	}
 	auto it = std::max_element(sizes.begin(), sizes.end());
 
@@ -427,7 +427,7 @@ Eigen::Matrix3f NormalityDetection::getRotationMatrix(Eigen::Vector3f planeNorma
 	rot_mat.col(2) = planeNormal;
 	if (verbose)
 	{
-		std::cout << std::endl
+		std::cout << std::endl << "Rotation Matrix: " << std::endl
 				  << std::setprecision(4)
 				  << rot_mat << std::endl
 				  << std::endl;
@@ -435,30 +435,59 @@ Eigen::Matrix3f NormalityDetection::getRotationMatrix(Eigen::Vector3f planeNorma
 	return rot_mat;
 }
 
-Eigen::Vector3f NormalityDetection::getEulerAngles(Eigen::Matrix3f rotationMatrix, std::string order, bool verbose)
+Eigen::Vector3f NormalityDetection::getEulerAngles(Eigen::Matrix3f rotationMatrix, bool verbose)
 {
-		Eigen::Vector3f euler = rotationMatrix.eulerAngles(order[0], order[1], order[2]) * 180.0 / M_PI;
+		Eigen::Vector3f euler = rotationMatrix.eulerAngles(0, 1, 2) * 180.0 / M_PI;
 
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
-                  << std::endl;
-
-        if (std::abs(std::trunc(euler[2])) != 0)
+		if (verbose)
         {
-            euler[0] = 180 - euler[0];
+			std::cout << "Uncorrected Euler Angles: " << std::endl
+					<< std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+					<< std::endl;
+		}
+		
+        if (std::abs(std::trunc(euler[2])) != 0) // if axes were rotated for some reason
+        {
+            euler[0] = euler[0] - 180;
             euler[1] = 180 - euler[1];
             euler[2] = 0;
         }
 
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
-                  << std::endl;
+		if (verbose)
+        {
+			// std::cout << std::endl
+            //       << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+            //       << std::endl;        
+		}
+        for (size_t i = 0; i < euler.size(); i++)
+        {
+            // std::cout << std::endl << std::setprecision(6) 
+            //           << euler.size() 
+            //           << std::endl;
+            if (euler[i] >= 180)
+                euler[i] = euler[i] - 360;
 
-        std::cout << std::endl
-                  << std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << std::abs(std::trunc(euler[2])) << std::endl
-                  << std::endl;
-		
-		return Eigen::Vector3f(euler[0], euler[1], std::abs(std::trunc(euler[2])));
+            else if (euler[i] <= -180)
+                euler[i] = euler[i] - 360;
+        }
+        
+        if (verbose)
+        {
+			// std::cout << std::endl
+			// 		<< std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+			// 		<< std::endl;
+		}
+
+        euler[2] = std::abs(std::trunc(euler[2]));
+
+        if (verbose)
+        {
+			std::cout << "Corrected Euler Angles: " << std::endl
+					<< std::setprecision(6) << euler[0] << ", " << euler[1] << ", " << euler[2] << std::endl
+					<< std::endl;
+		}
+
+		return Eigen::Vector3f(euler[0], euler[1], euler[2]);
 }
 
 short NormalityDetection::getIndex(std::vector<std::string> v, std::string element)
