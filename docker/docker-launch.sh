@@ -4,6 +4,14 @@ container_name=$1
 image_name=$2
 docker_username=$3
 
+if [ $# -eq 0 ]
+  then
+    echo "Usage:"
+    echo "./docker-launch.sh <container_name> <image/name:tag> <username_inside_container>"
+    exit
+fi
+
+
 XAUTH=/tmp/.docker.xauth
 if [ ! -f $XAUTH ]
 then

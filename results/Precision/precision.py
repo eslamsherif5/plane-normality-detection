@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-df_0deg  = pd.read_csv("new_data_0deg_euler_adjust2.csv" , sep=';')
-df_5deg  = pd.read_csv("new_data_5deg_euler_adjust2.csv" , sep=';')
-df_10deg = pd.read_csv("new_data_10deg_euler_adjust2.csv", sep=';')
-df_15deg = pd.read_csv("new_data_15deg_euler_adjust2.csv", sep=';')
+df_0deg  = pd.read_csv("new_data_euler_adjust2/new_data_0deg_euler_adjust2.csv" , sep=';')
+df_5deg  = pd.read_csv("new_data_euler_adjust2/new_data_5deg_euler_adjust2.csv" , sep=';')
+df_10deg = pd.read_csv("new_data_euler_adjust2/new_data_10deg_euler_adjust2.csv", sep=';')
+df_15deg = pd.read_csv("new_data_euler_adjust2/new_data_15deg_euler_adjust2.csv", sep=';')
 
 # df_0deg["x"] = df_0deg["x"].abs()
 # df_5deg["x"] = df_5deg["x"].abs()
@@ -204,5 +204,5 @@ fig_x.savefig("Estimated Camera Orientation - angle around x.pdf")
 fig_y.savefig("Estimated Camera Orientation - angle around y.pdf")
 fig2.savefig("Standard deviation of estimated angles.pdf")
 
-# plt.show()
+plt.show()
 
